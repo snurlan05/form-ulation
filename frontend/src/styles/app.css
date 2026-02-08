@@ -17,6 +17,24 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: system
 .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; align-items: start; }
 .left, .right { display: grid; gap: 12px; }
 
+/* make right column fill screen height */
+.right {
+  height: calc(100vh - 80px);
+}
+
+/* make the coach card fill that height */
+.right .card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* make chat area scroll inside */
+.chat {
+  flex: 1;
+  overflow-y: auto;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -24,6 +42,27 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: system
   padding: 12px;
   display: grid;
   gap: 10px;
+}
+
+html, body, #root { height: 100%; }
+
+.right {
+  height: calc(100vh - 80px); /* fills most of screen */
+}
+
+.right .card {
+  height: 100%;
+}
+
+.chatCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .cardTitle { font-weight: 700; }

@@ -56,9 +56,12 @@ export default function App() {
         </div>
 
         <div className="right">
-          <ScorePanel score={score} breakdown={breakdown} />
-          <ChatPanel messages={messages} />
-          <VideoLinks links={links} />
+          <ChatPanel
+            messages={messages}
+            score={score}
+            breakdown={breakdown}
+          links={links}
+          />
         </div>
       </div>
     </div>
