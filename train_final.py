@@ -12,14 +12,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 print("🔌 Connecting to Snowflake securely...")
-ctx = snowflake.connector.connect(
-    user=os.getenv('SNOW_USER'),
-    password=os.getenv('SNOW_PASS'),
-    account=os.getenv('SNOW_ACCOUNT'),
-    warehouse='COMPUTE_WH',
-    database='BICEP_CURL',
-    schema='PUBLIC'
-)
+
+try:
+    ctx = snowflake.connector.connect(
+        user=os.getenv('SNOW_USER'),
+        password=os.getenv('SNOW_PASS'),
+        account=os.getenv('SNOW_ACCOUNT'),
+        warehouse='COMPUTE_WH',
+        database='BICEP_CURL',
+        schema='PUBLIC'
+    )
+except:
+    raise Exception("No credentials found")
+    
 
 
 # --- 2. FETCH DATA ---

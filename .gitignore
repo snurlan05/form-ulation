@@ -3,6 +3,9 @@
 *.mov
 *.avi
 
+# Ignore dataset
+*.csv
+
 # Ignore specific folders
 good_videos/
 bad_videos/
