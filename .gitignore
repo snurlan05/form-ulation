@@ -1,3 +1,15 @@
-.venv/
-*.pt
+# Ignore ALL video files in ANY folder
+*.mp4
+*.mov
+*.avi
+
+# Ignore specific folders
+good_videos/
+bad_videos/
+barbell biceps curl/
+Draft_Video.mp4
+
+# Python junk
 __pycache__/
+*.pyc
+.venv/

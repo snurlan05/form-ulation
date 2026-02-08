@@ -2,10 +2,8 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 import sys
-from string.templatelib import Template # New in 3.14
 
-# 1. Performance Check: Enable Free-Threading if supported
-# In Python 3.14, you can check if the GIL is disabled programmatically
+# 1. Performance Check: Python 3.14 Free-Threading check
 if sys.version_info >= (3, 13) and hasattr(sys, '_is_gil_enabled'):
     gil_status = "Disabled" if not sys._is_gil_enabled() else "Enabled"
     print(f"GIL Status: {gil_status}")
@@ -30,38 +28,56 @@ while cap.isOpened():
     if results[0].keypoints is not None and results[0].keypoints.xy.nelement() > 0:
         keypoints = results[0].keypoints.xy[0].cpu().numpy()
         
-        # New in 3.14: Simplified exception handling (PEP 758)
-        # You no longer need parentheses for multiple exception types
+        # New in 3.14: Simplified exception handling logic
         try:
-            shoulder, hip, knee, ankle = keypoints[5], keypoints[11], keypoints[13], keypoints[15]
+            # --- CHANGE 1: Select Arm Joints instead of Leg Joints ---
+            # 5 = Left Shoulder
+            # 7 = Left Elbow
+            # 9 = Left Wrist
+            # 11 = Left Hip (Used for checking back sway)
+            shoulder = keypoints[5]
+            elbow = keypoints[7]
+            wrist = keypoints[9]
+            hip = keypoints[11]
             
-            knee_angle = calculate_angle(hip, knee, ankle)
-            back_angle = calculate_angle([hip[0], hip[1] - 100], hip, shoulder)
+            # --- CHANGE 2: Calculate Curl Angle ---
+            # Angle at the Elbow (Shoulder -> Elbow -> Wrist)
+            curl_angle = calculate_angle(shoulder, elbow, wrist)
             
-            # Use T-Strings (Template Strings) for structured labels
-            # These are safer for dynamic content than standard f-strings
-            knee_text = str(int(knee_angle))
-            back_text = str(int(back_angle))
+            # Form Check: Torso Swing (Vertical -> Hip -> Shoulder)
+            # Create a virtual vertical point above the hip
+            vertical_point = [hip[0], hip[1] - 100]
+            back_lean = calculate_angle(vertical_point, hip, shoulder)
             
-            cv2.putText(frame, knee_text, tuple(knee.astype(int)), 
+            # Visualize the angles
+            cv2.putText(frame, str(int(curl_angle)), tuple(elbow.astype(int)), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            cv2.putText(frame, back_text, tuple(hip.astype(int)), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-            # Feedback logic
-            if knee_angle < 90:
-                cv2.putText(frame, "GOOD DEPTH!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            elif knee_angle < 140:
-                cv2.putText(frame, "LOWER...", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
             
-            if back_angle > 45:
-                 cv2.putText(frame, "STOP LEANING!", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            # --- CHANGE 3: Bicep Specific Feedback Logic ---
+            
+            # 1. Check for Full Contraction (The Squeeze)
+            # A good curl usually goes below 35-40 degrees
+            if curl_angle < 35:
+                cv2.putText(frame, "GOOD SQUEEZE!", (50, 50), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
+            
+            # 2. Check for Full Extension (The Stretch)
+            # You want to go almost fully straight (approx 160-170 degrees)
+            elif curl_angle > 160:
+                cv2.putText(frame, "FULL EXTENSION", (50, 50), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 
-        except IndexError, ValueError: # Note: No parentheses used here!
+            # 3. Check for Cheating (Swinging the back)
+            # If torso moves more than 10 degrees back, you are using momentum
+            if back_lean > 10:
+                 cv2.putText(frame, "DONT SWING!", (50, 100), 
+                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+
+        except IndexError, ValueError: # Using your requested style
             pass
 
     annotated_frame = results[0].plot()
-    cv2.imshow("Squat Analyzer 3.14", annotated_frame)
+    cv2.imshow("Bicep Analyzer 3.14", annotated_frame)
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
