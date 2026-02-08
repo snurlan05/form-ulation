@@ -4,24 +4,28 @@ import csv
 import os
 import numpy as np
 
-# --- 1. SETUP ---
+# --- 1. CONFIGURATION (ALREADY SET FOR BAD VIDEOS) ---
+FOLDER_PATH = "bad_videos"       # <--- Looking in 'bad_videos' folder
+OUTPUT_FILE = "batch_bad_data.csv"    # <--- Saving to 'batch_bad_data.csv'
+LABEL = 0                        # <--- Label 0 means BAD FORM
+# -----------------------------------------------------
+
+# --- 2. SETUP ---
 model = YOLO('yolov8n-pose.pt')
-folder_path = "good_videos"  # <--- PUT YOUR VIDEOS IN THIS FOLDER
-output_file = "batch_good_data.csv"
 
 # Verify folder exists
-if not os.path.exists(folder_path):
-    os.makedirs(folder_path)
-    print(f"Created folder '{folder_path}'. Please put your videos inside it!")
+if not os.path.exists(FOLDER_PATH):
+    os.makedirs(FOLDER_PATH)
+    print(f"ERROR: Folder '{FOLDER_PATH}' not found!")
+    print("Please create a folder named 'bad_videos' and put your bad form videos inside it.")
     exit()
 
-# Get list of all video files (MP4 and MOV)
-video_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.mp4', '.mov'))]
+# Get list of all video files
+video_files = [f for f in os.listdir(FOLDER_PATH) if f.lower().endswith(('.mp4', '.mov'))]
 total_videos = len(video_files)
+print(f"--- FOUND {total_videos} BAD VIDEOS. STARTING BATCH PROCESS ---")
 
-print(f"--- FOUND {total_videos} VIDEOS. STARTING BATCH PROCESS ---")
-
-# --- MATH HELPERS ---
+# --- MATH HELPER ---
 def calculate_angle(a, b, c):
     a, b, c = np.array(a), np.array(b), np.array(c)
     radians = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
@@ -29,14 +33,11 @@ def calculate_angle(a, b, c):
     if angle > 180.0: angle = 360-angle
     return angle
 
-# --- 2. SETUP CSV ---
-# Check if file exists so we don't overwrite headers if we run this twice
-file_exists = os.path.exists(output_file)
+# --- 3. PREPARE CSV ---
+file_exists = os.path.exists(OUTPUT_FILE)
 
-with open(output_file, mode='a', newline='') as f:
+with open(OUTPUT_FILE, mode='a', newline='') as f:
     writer = csv.writer(f)
-    
-    # Write headers only if file is new
     if not file_exists:
         headers = ['label', 
                    'elbow_offset', 'back_lean', 'wrist_velocity', 
@@ -45,15 +46,14 @@ with open(output_file, mode='a', newline='') as f:
         headers += [f'k{i}' for i in range(34)]
         writer.writerow(headers)
 
-# --- 3. BATCH PROCESS LOOP ---
+# --- 4. MAIN LOOP ---
 for i, video_file in enumerate(video_files):
-    video_path = os.path.join(folder_path, video_file)
+    video_path = os.path.join(FOLDER_PATH, video_file)
     cap = cv2.VideoCapture(video_path)
     
     print(f"[{i+1}/{total_videos}] Processing: {video_file}...")
 
-    # RESET HISTORY FOR NEW VIDEO (Critical!)
-    # We don't want velocity to jump from Video A to Video B
+    # RESET HISTORY FOR NEW VIDEO
     prev_wrist_y = 0
     prev_elbow_angle = 180
     frame_count = 0
@@ -62,61 +62,85 @@ for i, video_file in enumerate(video_files):
         ret, frame = cap.read()
         if not ret: break
 
-        # Run YOLO (Verbose=False to keep terminal clean)
+        # Run YOLO
         results = model(frame, verbose=False)
-
-        # We still show the video so you can see it working
-        # (Optional: Comment out imshow/waitKey to make it run 10x faster)
+        
+        # Draw the skeleton on the frame (Visuals)
         annotated_frame = results[0].plot()
-        cv2.imshow("Batch Processor", annotated_frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'): # Press Q to force quit early
+
+        # --- FOCUS LOGIC: Find the Biggest Person ---
+        if results[0].boxes is not None and len(results[0].boxes) > 0:
+            
+            best_person_idx = 0
+            max_area = 0
+            
+            # Loop through all detected boxes to find the largest one
+            for idx, box in enumerate(results[0].boxes.xyxy):
+                x1, y1, x2, y2 = box.cpu().numpy()
+                area = (x2 - x1) * (y2 - y1)
+                if area > max_area:
+                    max_area = area
+                    best_person_idx = idx
+
+            # Draw "Target Locked" Box
+            box = results[0].boxes.xyxy[best_person_idx].cpu().numpy().astype(int)
+            cv2.rectangle(annotated_frame, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 4) # Red Box for Bad
+            cv2.putText(annotated_frame, "BAD DATA TARGET", (box[0], box[1]-10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+
+            # Extract Keypoints for the TARGET person only
+            if results[0].keypoints is not None:
+                keypoints = results[0].keypoints.xyn[best_person_idx].cpu().numpy()
+                flat_keypoints = keypoints.flatten()
+                
+                # --- PHYSICS CALCULATIONS ---
+                elbow_offset = abs(keypoints[7][0] - keypoints[5][0]) 
+                vertical_ref = [keypoints[11][0], keypoints[11][1] - 0.5]
+                back_lean = calculate_angle(vertical_ref, keypoints[11], keypoints[5])
+                
+                current_wrist_y = keypoints[9][1]
+                
+                # Velocity Fix (Prevent first frame spike)
+                if prev_wrist_y == 0: 
+                    wrist_velocity = 0
+                    prev_wrist_y = current_wrist_y
+                else:
+                    wrist_velocity = abs(current_wrist_y - prev_wrist_y) * 100 
+                    prev_wrist_y = current_wrist_y 
+
+                shoulder_shrug = abs(keypoints[3][1] - keypoints[5][1])
+                elbow_flare = abs(keypoints[7][0] - keypoints[5][0])
+                neck_angle = calculate_angle(keypoints[3], keypoints[5], keypoints[11])
+
+                # Phase Logic
+                current_elbow_angle = calculate_angle(keypoints[5], keypoints[7], keypoints[9])
+                angle_change = current_elbow_angle - prev_elbow_angle
+                
+                rep_phase = 0 
+                if angle_change < -1.0: rep_phase = 1 
+                elif angle_change > 1.0: rep_phase = -1
+                prev_elbow_angle = current_elbow_angle
+
+                # --- SAVE ROW TO CSV (Using LABEL=0) ---
+                data_row = [LABEL, 
+                            elbow_offset, back_lean, wrist_velocity, 
+                            shoulder_shrug, elbow_flare, neck_angle,
+                            rep_phase] + flat_keypoints.tolist()
+                
+                with open(OUTPUT_FILE, mode='a', newline='') as f:
+                    csv.writer(f).writerow(data_row)
+                
+                frame_count += 1
+
+        # Show the video (Red Box)
+        cv2.imshow("Batch Processor - BAD MODE", annotated_frame)
+        
+        # Press Q to quit early
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             exit()
-
-        if results[0].keypoints is not None and results[0].keypoints.xyn.nelement() > 0:
-            keypoints = results[0].keypoints.xyn[0].cpu().numpy()
-            flat_keypoints = keypoints.flatten()
-            
-            # --- PHYSICS CALCULATIONS ---
-            elbow_offset = abs(keypoints[7][0] - keypoints[5][0]) 
-            vertical_ref = [keypoints[11][0], keypoints[11][1] - 0.5]
-            back_lean = calculate_angle(vertical_ref, keypoints[11], keypoints[5])
-            
-            current_wrist_y = keypoints[9][1]
-            # Handle first frame of video (velocity is 0)
-            if prev_wrist_y == 0: prev_wrist_y = current_wrist_y
-            
-            wrist_velocity = abs(current_wrist_y - prev_wrist_y) * 100 
-            prev_wrist_y = current_wrist_y 
-
-            shoulder_shrug = abs(keypoints[3][1] - keypoints[5][1])
-            elbow_flare = abs(keypoints[7][0] - keypoints[5][0])
-            neck_angle = calculate_angle(keypoints[3], keypoints[5], keypoints[11])
-
-            # Phase Logic
-            current_elbow_angle = calculate_angle(keypoints[5], keypoints[7], keypoints[9])
-            angle_change = current_elbow_angle - prev_elbow_angle
-            
-            rep_phase = 0 
-            if angle_change < -1.0: rep_phase = 1 
-            elif angle_change > 1.0: rep_phase = -1
-            prev_elbow_angle = current_elbow_angle
-
-            # --- AUTO SAVE (LABEL = 1) ---
-            # We hardcode the label to 1 since folder is "good_videos"
-            label = 1
-            
-            data_row = [label, 
-                        elbow_offset, back_lean, wrist_velocity, 
-                        shoulder_shrug, elbow_flare, neck_angle,
-                        rep_phase] + flat_keypoints.tolist()
-            
-            with open(output_file, mode='a', newline='') as f:
-                csv.writer(f).writerow(data_row)
-            
-            frame_count += 1
 
     cap.release()
     print(f"   -> Finished {video_file} ({frame_count} frames saved)")
 
 cv2.destroyAllWindows()
-print("--- ALL VIDEOS PROCESSED ---")
+print("--- ALL BAD VIDEOS PROCESSED ---")
