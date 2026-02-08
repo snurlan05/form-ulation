@@ -33,6 +33,8 @@ current_color = (0, 255, 0)  # Green
 
 # --- 5. CAMERA SETUP ---
 cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 print("📷 Starting camera. Press 'q' to quit.")
 
 while cap.isOpened():
@@ -103,7 +105,7 @@ while cap.isOpened():
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
 
     # --- 12. SHOW FRAME ---
-    cv2.imshow("Bicep AI - Live", annotated_frame)
+    cv2.imshow("Live", annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 

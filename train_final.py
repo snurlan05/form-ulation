@@ -6,14 +6,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
+from dotenv import load_dotenv
 
-# --- 1. CONNECT TO SNOWFLAKE ---
-print("🔌 Connecting to Snowflake...")
 
+load_dotenv()
+
+print("🔌 Connecting to Snowflake securely...")
 ctx = snowflake.connector.connect(
-    user='RGUPTA100',
-    password='Lcvq3SzkU5FTGfv',
-    account='GOSCWJZ-QB51625',
+    user=os.getenv('SNOW_USER'),
+    password=os.getenv('SNOW_PASS'),
+    account=os.getenv('SNOW_ACCOUNT'),
     warehouse='COMPUTE_WH',
     database='BICEP_CURL',
     schema='PUBLIC'
