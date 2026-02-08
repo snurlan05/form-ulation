@@ -50,7 +50,7 @@ for epoch in range(epoch_num):
 
         optimizer.zero_grad()
 
-        outputs = MLP(inputs)
+        outputs = model(inputs)
 
         loss = loss_fn(outputs, targets)
 
@@ -68,4 +68,5 @@ for epoch in range(epoch_num):
 
 print("Training has completed")
 
-.eval()
+model.eval()
+
