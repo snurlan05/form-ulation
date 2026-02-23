@@ -1,4 +1,4 @@
-# 🏋️‍♂️ Form-ulation — AI Bicep Curl Form Analyzer
+# Form-ulation — AI Bicep Curl Form Analyzer
 
 Form-ulation is a real-time AI personal trainer that uses computer vision and machine learning to analyze your bicep curl form. It detects bad form instantly — like swinging your back, flaring your elbows, or shrugging your shoulders — and gives you live feedback while you exercise.
 
