@@ -1,0 +1,25 @@
+# Form-ulation FastAPI backend only (no Streamlit, no Snowflake).
+# Install:  pip install -r backend/requirements.txt
+# Run:      uvicorn backend.app:app --port 8000
+#
+# Tested 2026-11-11 in a Python 3.12 venv (see REPORT.md). The torch pin
+# below is the one from the original packages.txt; in this VM the 915 MB
+# torch 2.10.0 wheel repeatedly failed to download, so verification used
+# torch 2.8.0+cpu / torchvision 0.23.0+cpu from the PyTorch CPU index
+# instead. The backend only calls torch.cuda.is_available(), so either
+# works. CPU-only alternative:
+#   pip install --extra-index-url https://download.pytorch.org/whl/cpu \
+#       "torch==2.8.0+cpu" "torchvision==0.23.0+cpu"
+# and then install the rest of this file.
+
+fastapi==0.162.4
+uvicorn==0.54.0
+python-multipart==0.0.33
+numpy==2.4.2
+pandas==2.3.3
+scikit-learn==1.8.0
+joblib==1.5.3
+opencv-python-headless==4.13.0.92
+torch==2.10.0
+ultralytics==8.4.12
+python-dotenv==1.2.1

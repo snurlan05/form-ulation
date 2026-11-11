@@ -8,12 +8,21 @@ export default function Recorder({ onRecorded }) {
   const [stream, setStream] = useState(null);
   const [recording, setRecording] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      setStream(s);
-      if (videoRef.current) videoRef.current.srcObject = s;
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        setStream(s);
+        if (videoRef.current) videoRef.current.srcObject = s;
+      } catch {
+        // Previously this rejection was unhandled and the camera area
+        // just stayed blank. Show the reason instead.
+        setCameraError(
+          "Could not access the camera. Allow camera access and use a secure (https:// or localhost) page, then reload."
+        );
+      }
     })();
 
     return () => {
@@ -59,12 +68,16 @@ export default function Recorder({ onRecorded }) {
     <div className="card">
       <div className="cardTitle">Camera</div>
 
-      <div className="videoBox">
-        <video ref={videoRef} autoPlay playsInline muted />
-      </div>
+      {cameraError ? (
+        <div className="muted">{cameraError}</div>
+      ) : (
+        <div className="videoBox">
+          <video ref={videoRef} autoPlay playsInline muted />
+        </div>
+      )}
 
       <div className="row">
-        <button className="btn" onClick={start} disabled={recording}>Start</button>
+        <button className="btn" onClick={start} disabled={recording || !stream}>Start</button>
         <button className="btn" onClick={stop} disabled={!recording}>Stop</button>
       </div>
 

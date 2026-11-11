@@ -56,12 +56,12 @@ export default function App() {
         </div>
 
         <div className="right">
-          <ChatPanel
-            messages={messages}
-            score={score}
-            breakdown={breakdown}
-          links={links}
-          />
+          {/* ScorePanel and VideoLinks were previously imported but never
+              rendered, so the score / breakdown / links from /analyze were
+              silently dropped. They are rendered here now. */}
+          <ScorePanel score={score} breakdown={breakdown} />
+          <ChatPanel messages={messages} />
+          <VideoLinks links={links} />
         </div>
       </div>
     </div>
