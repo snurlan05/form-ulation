@@ -1,0 +1,46 @@
+# Form-ulation — full Python dependencies (all interfaces).
+# Converted from packages.txt (which was UTF-16LE-encoded and missing
+# Streamlit / FastAPI). Install with:  pip install -r requirements.txt
+#
+# For the FastAPI backend only, use backend/requirements.txt instead.
+# For training only, Snowflake credentials are required — see .env.example.
+#
+# Versions below are the ones tested 2026-11-11 in a Python 3.12 venv,
+# except torch (see note) and snowflake-connector-python (not installed
+# in the test venv; pin carried over from packages.txt, untested here).
+# See REPORT.md for the full verification log.
+
+# --- ML / vision ---
+numpy==2.4.2
+pandas==2.3.3
+scikit-learn==1.8.0
+joblib==1.5.3
+opencv-python-headless==4.13.0.92
+torch==2.10.0
+ultralytics==8.4.12
+python-dotenv==1.2.1
+
+# --- FastAPI backend (new) ---
+fastapi==0.162.4
+uvicorn==0.54.0
+python-multipart==0.0.33
+
+# --- Streamlit web app (was missing from packages.txt) ---
+streamlit==1.67.0
+streamlit-webrtc==0.79.1
+
+# --- Training only (train_final.py downloads data from Snowflake) ---
+snowflake-connector-python==4.2.0
+
+# Note on torch: the torch==2.10.0 wheel is ~915 MB and repeatedly
+# failed to download in the verification VM, so testing used
+# torch 2.8.0+cpu / torchvision 0.23.0+cpu from the PyTorch CPU index
+# (pip install --extra-index-url https://download.pytorch.org/whl/cpu
+# "torch==2.8.0+cpu" "torchvision==0.23.0+cpu"). The code only calls
+# torch.cuda.is_available(). If you install on a machine with a normal
+# connection, the 2.10.0 pin above should install as-is.
+#
+# Note: live_demo.py uses cv2.imshow, which needs the GUI build of
+# OpenCV. On a desktop, replace opencv-python-headless with
+# opencv-python==4.13.0.92. The Streamlit app and the FastAPI backend
+# do not need a display and work with the headless build.

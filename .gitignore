@@ -1,9 +1,12 @@
-# Ignore ALL video files in ANY folder
+# Ignore ALL video files in ANY folder (training clips are not committed)
 *.mp4
 *.mov
 *.avi
+*.webm
+*.mkv
 
-# Ignore dataset
+# Ignore dataset CSVs (regenerable from videos via collect_data.py;
+# the committed CSVs are proposed for removal from tracking — see README)
 *.csv
 
 # Ignore specific folders
@@ -16,4 +19,17 @@ Draft_Video.mp4
 __pycache__/
 *.pyc
 .venv/
+venv/
 .env
+.pytest_cache/
+
+# Node / frontend build output (reinstall with `npm install`)
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+dist/
+
+# Model / data files that are large or regenerable are kept for now
+# (bicep_model_v2.pkl + yolov8n-pose.pt are required to run the app).
+# See README "Model files" for what can be removed from tracking.
